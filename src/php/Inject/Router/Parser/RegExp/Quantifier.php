@@ -13,14 +13,19 @@ use \Inject\Router\Util\StringScanner;
 /**
  * Pattern part multiplier, like {n}, *, +, etc.
  */
-class Count implements PartInterface
+class Quantifier extends Pattern
 {
-	protected $part;
-	
+	/**
+	 * Smallest number of repetitions of the contained pattern, must be >= 0.
+	 * 
+	 * @var int
+	 */
 	protected $min = 0;
 	
 	/**
-	 * Null = infinity
+	 * Maximum number of repetitions of the contained pattern, null = infinity.
+	 * 
+	 * @var int|null
 	 */
 	protected $max = null;
 	
@@ -34,9 +39,9 @@ class Count implements PartInterface
 		$this->max = $max;
 	}
 	
-	public function setPart($part)
+	public function setParts(array $parts)
 	{
-		$this->part = $part;
+		$this->parts = $parts;
 	}
 	
 	/**
@@ -69,7 +74,7 @@ class Count implements PartInterface
 	 */
 	public function parse(StringScanner $str, Closure $unescaper)
 	{
-		if($str->scan('(\\d+)(,)?(\\d+)?'))
+		if($str->scan('\\{(\\d+)(,)?(\\d+)?'))
 		{
 			$this->setMin($str[1]);
 			
@@ -103,34 +108,37 @@ class Count implements PartInterface
 	
 	public function toPattern(Closure $escaper)
 	{
-		if(is_string($this->part))
-		{
-			$str = $escaper($this->part);
-		}
-		else
-		{
-			$str = $this->part->toPattern($escaper);
-		}
+		$str = parent::toPattern($escaper);
 		
-		if($this->min == 0 && $this->max == null)
+		if($this->max == null)
 		{
-			return $str.'*';
-		}
-		else if($this->min == 1 && $this->max == null)
-		{
-			return $str.'+';
-		}
-		else if($this->min > 0 && $this->max == null)
-		{
-			return $str.'{'.$this->min.',}';
-		}
-		else if($this->min == $this->max)
-		{
-			return $str.'{'.$this->min.'}';
+			if($this->min == 0)
+			{
+				return $str.'*';
+			}
+			elseif($this->min == 1)
+			{
+				return $str.'+';
+			}
+			else
+			{
+				return $str.'{'.$this->min.',}';
+			}
 		}
 		else
 		{
-			return $str.'{'.$this->min.','.$this->max.'}';
+			if($this->min == 0 && $this->max == 1)
+			{
+				return $str.'?';
+			}
+			elseif($this->min == $this->max)
+			{
+				return $str.'{'.$this->min.'}';
+			}
+			else
+			{
+				return $str.'{'.$this->min.','.$this->max.'}';
+			}
 		}
 	}
 }

@@ -11,13 +11,10 @@ use \Closure;
 
 /**
  * A capture.
- * 
- * TODO: Add numeric indices.
- * TODO: Unescape name?
  */
 class Capture extends Pattern
 {
-	protected $name = false;
+	protected $name = 0;
 	
 	public function setName($name)
 	{
@@ -34,7 +31,7 @@ class Capture extends Pattern
 	
 	public function toPattern(Closure $escaper)
 	{
-		if($this->name == false)
+		if(is_int($this->name))
 		{
 			return '('.parent::toPattern($escaper).')';
 		}

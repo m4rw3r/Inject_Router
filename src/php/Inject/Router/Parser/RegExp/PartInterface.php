@@ -23,6 +23,13 @@ interface PartInterface
 	public function parse(StringScanner $str, Closure $unescaper);
 	
 	/**
+	 * Returns a list of the contained parts.
+	 * 
+	 * @return array
+	 */
+	public function getParts();
+	
+	/**
 	 * Returns the partial Regular Expression pattern this object represents.
 	 * 
 	 * @param  Closure  A function which will escape strings for use in the expression

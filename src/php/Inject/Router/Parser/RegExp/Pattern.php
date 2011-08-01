@@ -8,6 +8,7 @@
 namespace Inject\Router\Parser\RegExp;
 
 use \Closure;
+use \Inject\Router\Parser\RegExp;
 use \Inject\Router\Util\StringScanner;
 
 /**
@@ -23,7 +24,7 @@ class Pattern implements PartInterface
 		{
 			if($text = $str->scan('\\\\[dDsSwWn]'))
 			{
-				$this->parts[] = new CharClass(false, $text);
+				$this->parts[] = new CharClass($text, false);
 			}
 			else if($text = $str->scan('\\^|\\\\A'))
 			{
@@ -50,9 +51,14 @@ class Pattern implements PartInterface
 					// Normal capture
 					$regex = new Capture();
 					
-					if($str->scan('\\?<(\w+)>'))
+					// (?<name>regex), (?P<name>regex) and (?'name'regex)
+					if($str->scan('\\?(?:P)?(<|\')(\w+)(?:\1|>)'))
 					{
-						$regex->setName($str[1]);
+						$regex->setName($str[2]);
+					}
+					else
+					{
+						$regex->setName(++RegExp::$capture_index);
 					}
 					
 					$regex->parse($str, $unescaper);
@@ -81,7 +87,7 @@ class Pattern implements PartInterface
 				}
 				else
 				{
-					$char_class = new CharClass($str->scan('\\^') ? true : false);
+					$char_class = new CharClass(null, $str->scan('\\^') ? true : false);
 				}
 				
 				$char_class->parse($str, $unescaper);
@@ -89,61 +95,57 @@ class Pattern implements PartInterface
 				$this->parts[] = $char_class;
 			}
 			// x{n}, x{n,}, x{n,m}
-			else if($str->scan('\\{'))
+			else if($str->check('\\{'))
 			{
-				$count = new Count();
+				$quant = new Quantifier();
 				
-				$count->parse($str, $unescaper);
+				$quant->parse($str, $unescaper);
 				
-				$count->setPart(array_pop($this->parts));
+				$quant->setParts(array(array_pop($this->parts)));
 				
-				$this->parts[] = $count;
+				$this->parts[] = $quant;
 			}
 			// Pattern1|Pattern2
 			else if($str->scan('\\|'))
 			{
-				$choice = new Choice();
-				$choice->setFirstParts($this->parts);
+				$alt = new Alternation($this->parts);
 				
-				$pattern = new Pattern();
-				$pattern->parse($str);
+				$alt->parse($str, $unescaper);
 				
-				$choice->setSecondPart($pattern->getParts());
-				
-				$this->parts = array($choice);
+				$this->parts = array($alt);
 				
 				return;
 			}
-			// "."
+			// "." wildcard
 			else if($str->scan('\\.'))
 			{
-				$this->parts[] = new Wildcard();
+				$this->parts[] = new CharClass('.');
 			}
 			else if($str->scan('\\?'))
 			{
-				$count = new Count();
+				$count = new Quantifier();
 				$count->setMax(1); // 0 is default min
 				
-				$count->setPart(array_pop($this->parts));
+				$count->setParts(array(array_pop($this->parts)));
 				
 				$this->parts[] = $count;
 			}
 			// 1 or more
 			else if($str->scan('\\+'))
 			{
-				$count = new Count();
+				$count = new Quantifier();
 				$count->setMin(1);
 				
-				$count->setPart(array_pop($this->parts));
+				$count->setParts(array(array_pop($this->parts)));
 				
 				$this->parts[] = $count;
 			}
 			// Any
 			else if($str->scan('\\*'))
 			{
-				$count = new Count(); // min = 0, max = infinity is default
+				$count = new Quantifier(); // min = 0, max = infinity is default
 				
-				$count->setPart(array_pop($this->parts));
+				$count->setParts(array(array_pop($this->parts)));
 				
 				$this->parts[] = $count;
 			}
@@ -163,7 +165,7 @@ class Pattern implements PartInterface
 		}
 	}
 	
-	public function compress(Closure $unescaper)
+	/*public function compress(Closure $unescaper)
 	{
 		reset($this->parts);
 		
@@ -201,7 +203,7 @@ class Pattern implements PartInterface
 			
 			next($this->parts);
 		}
-	}
+	}*/
 	
 	public function getParts()
 	{

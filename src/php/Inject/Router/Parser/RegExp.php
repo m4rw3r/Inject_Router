@@ -11,6 +11,8 @@ use \Inject\Router\Util\StringScanner;
 
 class RegExp
 {
+	public static $capture_index = 0;
+	
 	protected static $regex_modifiers = array(
 		'PCRE_CASELESS'       => 'i',
 		'PCRE_MULTILINE'      => 'm',
@@ -37,17 +39,30 @@ class RegExp
 	 */
 	protected $modifiers = array();
 	
+	/**
+	 * A list of capture names.
+	 */
+	protected $capture_names = array();
+	
 	// ------------------------------------------------------------------------
 	
 	public function __construct($pattern)
 	{
 		$pattern = $this->parseDelimitersModifiers($pattern);
 		
+		// Unescape delimiter chars as we have removed them:
+		$pattern = str_replace('\\'.$this->delimiter, $this->delimiter, $pattern);
+		
 		$this->pattern = new RegExp\Pattern();
+		
+		// Reset capture index before parsing
+		self::$capture_index = 0;
 		
 		$this->pattern->parse(new StringScanner($pattern), $this->getUnescaper());
 		
-		$this->pattern->compress($this->getUnescaper());
+		// $this->pattern->compress($this->getUnescaper());
+		
+		$this->collectData($this->pattern);
 	}
 	
 	// ------------------------------------------------------------------------
@@ -100,11 +115,78 @@ class RegExp
 		return substr($str, 1, $end_pos - 1);
 	}
 	
+	/**
+	 * Iterates through the regular expression and collects data from the parsed nodes.
+	 * 
+	 * Currently only collects capture names.
+	 */
+	protected function collectData($pattern)
+	{
+		if(is_array($pattern))
+		{
+			foreach($pattern as $p)
+			{
+				$this->collectData($p);
+			}
+		}
+		else
+		{
+			foreach($pattern->getParts() as $part)
+			{
+				if(is_object($part))
+				{
+					if($part instanceof RegExp\Capture)
+					{
+						$this->capture_names[] = $part->getName();
+						
+						$this->collectData($part->getParts());
+					}
+					elseif($part instanceof RegExp\Pattern)
+					{
+						$this->collectData($part->getParts());
+					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Returns a list of the used captures.
+	 * 
+	 * @return array
+	 */
+	public function getCaptures()
+	{
+		return $this->capture_names;
+	}
+	
 	// ------------------------------------------------------------------------
 	
+	/**
+	 * Returns a list of the used named-captures.
+	 * 
+	 * @return array
+	 */
+	public function getNamedCaptures()
+	{
+		return array_filter($this->capture_names, function($elem)
+		{
+			return ! is_int($elem);
+		});
+	}
+	
+	// ------------------------------------------------------------------------
+	
+	/**
+	 * Returns the Regular Expression representation of this pattern.
+	 * 
+	 * @return string
+	 */
 	public function getPattern()
 	{
-		return $this->delimiter.$this->pattern->toPattern($this->getEscaper()).$this->delimiter.implode('', $this->modifiers);
+		return $this->delimiter.str_replace($this->delimiter, '\\'.$this->delimiter,
+			$this->pattern->toPattern($this->getEscaper())).$this->delimiter.
+			implode('', $this->modifiers);
 	}
 	
 	// ------------------------------------------------------------------------

@@ -22,8 +22,12 @@ $loader->register();
 
 use Inject\Router\Parser\RegExp;
 
-$r = new RegExp('/\/lol\/([ab])[\\\\]\d/ui');
+$r = new RegExp('+/user(?:(?<id>(\d)\+))?.+ui');
 
 var_dump($r);
 
 var_dump($r->getPattern());
+
+var_dump(preg_match($r->getPattern(), '/user'));
+
+var_dump($r->getNamedCaptures());

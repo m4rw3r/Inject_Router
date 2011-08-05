@@ -129,7 +129,7 @@ class RegExp
 				$this->collectData($p);
 			}
 		}
-		else
+		elseif(is_object($pattern) && $pattern instanceof RegExp\PartInterface)
 		{
 			foreach($pattern->getParts() as $part)
 			{
@@ -148,6 +148,11 @@ class RegExp
 				}
 			}
 		}
+	}
+	
+	public function getPatternObject()
+	{
+		return $this->pattern;
 	}
 	
 	/**
@@ -202,6 +207,8 @@ class RegExp
 		
 		return function($str) use($delim)
 		{
+			// TODO: Prevent backslashes from being escaped? as they are preserved if the unescaper
+			// does not detect a proper RexExp control char
 			return preg_quote($str, $delim);
 		};
 	}

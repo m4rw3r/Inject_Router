@@ -106,6 +106,13 @@ class Quantifier extends Pattern
 		}
 	}
 	
+	public function isLiteral()
+	{
+		// TODO: Only literal on fixed number of iterations
+		// return $this->min === $this->max;
+		return false;
+	}
+	
 	public function toPattern(Closure $escaper)
 	{
 		$str = parent::toPattern($escaper);

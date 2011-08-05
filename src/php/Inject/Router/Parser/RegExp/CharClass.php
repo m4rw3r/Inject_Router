@@ -11,8 +11,7 @@ use \Closure;
 use \Inject\Router\Util\StringScanner;
 
 /**
- * Representation of a Regular Expression character-class ("[abcd]"), a wildcard (".")
- * or a generic character type ("\d", "\D", "\s", "\S", "\w" or "\W").
+ * Representation of a Regular Expression character-class ("[abcd]").
  */
 class CharClass implements PartInterface
 {
@@ -23,26 +22,9 @@ class CharClass implements PartInterface
 	 */
 	protected $inverted = false;
 	
-	public function __construct($part = null, $inverted = false)
+	public function __construct($inverted = false)
 	{
 		$this->inverted = $inverted;
-		
-		empty($part) OR $this->parts[] = $part;
-	}
-	
-	/**
-	 * Returns true if this Regular Expression part should be wrapped in
-	 * brackets or not.
-	 * 
-	 * If the pattern only contains a wildcard (".") or a generic character type
-	 * ("\d", "\D", "\s", "\S", "\w" or "\W").
-	 * 
-	 * @return boolean
-	 */
-	public function useBrackets()
-	{
-		return $this->inverted OR count($this->parts) != 1 OR
-		       $this->parts[0] != '.' && ! preg_match('/^\\\\[dDsSwW]$/', $this->parts[0]);
 	}
 	
 	public function isInverted()
@@ -53,6 +35,11 @@ class CharClass implements PartInterface
 	public function getParts()
 	{
 		return $this->parts;
+	}
+	
+	public function isLiteral()
+	{
+		return false;
 	}
 	
 	public function parse(StringScanner $str, Closure $unescaper)
@@ -79,30 +66,22 @@ class CharClass implements PartInterface
 	
 	public function toPattern(Closure $escaper)
 	{
-		if( ! $this->useBrackets())
+		$str = array();
+		
+		foreach($this->parts as $part)
 		{
-			// Only one parts which should not be escaped
-			return reset($this->parts);
-		}
-		else
-		{
-			$str = array();
-			
-			foreach($this->parts as $part)
+			if(is_string($part))
 			{
-				if(is_string($part))
-				{
-					$str[] = $escaper($part);
-				}
-				else
-				{
-					$str[] = $part->toPattern($escaper);
-				}
+				$str[] = $escaper($part);
 			}
-			
-			$str = implode('', $str);
-			
-			return $this->inverted ? '[^'.$str.']' : '['.$str.']';
+			else
+			{
+				$str[] = $part->toPattern($escaper);
+			}
 		}
+		
+		$str = implode('', $str);
+		
+		return $this->inverted ? '[^'.$str.']' : '['.$str.']';
 	}
 }

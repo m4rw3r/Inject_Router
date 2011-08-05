@@ -24,7 +24,7 @@ class Pattern implements PartInterface
 		{
 			if($text = $str->scan('\\\\[dDsSwWn]'))
 			{
-				$this->parts[] = new CharClass($text, false);
+				$this->parts[] = new CharType($text);
 			}
 			else if($text = $str->scan('\\^|\\\\A'))
 			{
@@ -48,17 +48,16 @@ class Pattern implements PartInterface
 				}
 				else
 				{
-					// Normal capture
-					$regex = new Capture();
-					
 					// (?<name>regex), (?P<name>regex) and (?'name'regex)
 					if($str->scan('\\?(?:P)?(<|\')(\w+)(?:\1|>)'))
 					{
-						$regex->setName($str[2]);
+						// Name, but named groups still have a capture index
+						$regex = new Capture(++RegExp::$capture_index, $str[2]);
 					}
 					else
 					{
-						$regex->setName(++RegExp::$capture_index);
+						// No name, increment capture index
+						$regex = new Capture(++RegExp::$capture_index);
 					}
 					
 					$regex->parse($str, $unescaper);
@@ -87,7 +86,7 @@ class Pattern implements PartInterface
 				}
 				else
 				{
-					$char_class = new CharClass(null, $str->scan('\\^') ? true : false);
+					$char_class = new CharClass($str->scan('\\^') ? true : false);
 				}
 				
 				$char_class->parse($str, $unescaper);
@@ -119,7 +118,7 @@ class Pattern implements PartInterface
 			// "." wildcard
 			else if($str->scan('\\.'))
 			{
-				$this->parts[] = new CharClass('.');
+				$this->parts[] = new Wildcard();
 			}
 			else if($str->scan('\\?'))
 			{
@@ -165,49 +164,15 @@ class Pattern implements PartInterface
 		}
 	}
 	
-	/*public function compress(Closure $unescaper)
-	{
-		reset($this->parts);
-		
-		while($next = current($this->parts))
-		{	
-			if($next instanceof Pattern)
-			{
-				$next->compress($unescaper);
-			}
-			else if(is_string($next))
-			{
-				// Attempt to look at the previous element
-				$prev = prev($this->parts);
-				
-				if(key($this->parts) === null)
-				{
-					// Reset, because we suddenly went outside the array
-					reset($this->parts);
-				}
-				else if(is_string($prev))
-				{
-					// Yup, it is a string, concatenate with previous
-					$this->parts[key($this->parts)] .= next($this->parts);
-					
-					// Remove concatenated element and step back to compensate
-					unset($this->parts[key($this->parts)]);
-					prev($this->parts);
-				}
-				else
-				{
-					// No string, move forward to compensate for backwards move
-					next($this->parts);
-				}
-			}
-			
-			next($this->parts);
-		}
-	}*/
-	
 	public function getParts()
 	{
 		return $this->parts;
+	}
+	
+	public function isLiteral()
+	{
+		// Pattern is literal as it is just a predetermined sequence
+		return true;
 	}
 	
 	public function toPattern(Closure $escaper)

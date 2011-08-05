@@ -14,7 +14,15 @@ use \Closure;
  */
 class Capture extends Pattern
 {
-	protected $name = 0;
+	protected $index = 0;
+	
+	protected $name = false;
+	
+	public function __construct($index, $name = false)
+	{
+		$this->index = $index;
+		$this->name  = $name;
+	}
 	
 	public function setName($name)
 	{
@@ -22,16 +30,33 @@ class Capture extends Pattern
 	}
 	
 	/**
+	 * Returns the index this capture has in the regex.
+	 * 
+	 * @return int
+	 */
+	public function getIndex()
+	{
+		return $this->index;
+	}
+	
+	/**
 	 * Returns the name of this capture, false if no name.
+	 * 
+	 * @return string|false
 	 */
 	public function getName()
 	{
 		return $this->name;
 	}
 	
+	public function isLiteral()
+	{
+		return false;
+	}
+	
 	public function toPattern(Closure $escaper)
 	{
-		if(is_int($this->name))
+		if( ! $this->name)
 		{
 			return '('.parent::toPattern($escaper).')';
 		}

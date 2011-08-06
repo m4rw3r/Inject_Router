@@ -10,18 +10,15 @@ class CompilingDynamic
 	
 	protected $callbacks = array();
 	
-	public function __construct()
+	public function __construct($methods = array('GET', 'POST', 'PUT', 'DELETE'))
 	{
-		$this->route_map = array(
-			'GET'     => new Multimap(),
-			/*'POST'    => new Multimap(),
-			'PUT'     => new Multimap(),
-			'DELETE'  => new Multimap(),
-			'HEAD'    => new Multimap(),
-			'TRACE'   => new Multimap(),
-			'OPTIONS' => new Multimap(),
-			'CONNECT' => new Multimap()*/
-		);
+		foreach($methods as $m)
+		{
+			// Make sure it is uppercase
+			$m = strtoupper($m);
+			
+			$this->route_map[$m] = new Multimap();
+		}
 	}
 	
 	public function connect($methods, $pattern, $function)
@@ -49,14 +46,35 @@ class CompilingDynamic
 		}
 	}
 	
-	public function build()
+	public function exportData()
+	{
+		$arr = array();
+		
+		foreach($this->route_map as $method => $graph)
+		{
+			var_dump($graph);
+			
+			$arr[] = "'".$method.'\' => function($url)
+	{
+		$matches = array();
+		
+'.$graph->toCode(2).'
+		
+		return false;
+	}';
+		}
+		
+		return "array(".implode("\n\t", $arr)."\n}";
+	}
+	
+	public function build($clear_map = true)
 	{
 		foreach($this->route_map as $method => $graph)
 		{
 			$this->graph[$method] = eval('return function($url){$matches = array();'.$graph->toCode().'};');
 		}
 		
-		$this->route_map = array();
+		$clear_map && $this->route_map = array();
 	}
 	
 	public function __invoke($env)
@@ -85,6 +103,9 @@ class CompilingDynamic
 	}
 }
 
+/**
+ * Creates an array of conditions from a RegExp object.
+ */
 class RegExpPath
 {
 	protected $pattern;
@@ -143,166 +164,6 @@ class RegExpPath
 	}
 }
 
-class Condition
-{
-	protected $expression;
-	
-	protected $nested = array();
-	
-	public function __construct($expression)
-	{
-		$this->expression = $expression;
-	}
-	
-	public function add($part)
-	{
-		$this->nested[] = $part;
-	}
-	
-	public function toCode($indent = 0)
-	{
-		$ind = str_repeat("\t", $indent);
-		
-		return $ind.'if('.$this->expression.')
-'.$ind.'{
-'.$ind.'	'.$this->buildNested($indent + 1).'
-'.$ind.'}';
-	}
-	
-	public function buildNested($indent)
-	{
-		$arr = array();
-		$ind = str_repeat("\t", $indent);
-		
-		foreach($this->nested as $part)
-		{
-			if(is_string($part))
-			{
-				$arr[] = $part;
-			}
-			else
-			{
-				$arr[] = $part->toCode($indent);
-			}
-		}
-		
-		return implode("\n\n", $arr);
-	}
-}
-
-class ExpressionKey
-{
-	protected $keys = array();
-	
-	protected $value = array();
-	
-	public function __construct($keys = array(), $value = array())
-	{
-		$this->keys = $keys;
-		$this->value = $value;
-	}
-	
-	public function set(array $keys, $value)
-	{
-		if(empty($this->keys))
-		{
-			$this->keys = $keys;
-			$this->value[] = $value;
-			
-			return;
-		}
-		
-		for($i = 0, $c = count($keys); $i < $c; $i++)
-		{
-			if(empty($this->keys[$i]))
-			{
-				$rest  = array_slice($keys, $i);
-				$first = array_shift($rest);
-				
-				if( ! empty($this->value[$first]))
-				{
-					return $this->value[$first]->set($rest);
-				}
-				else
-				{
-					$this->value[$first] = new ExpressionKey($rest, array($value));
-				}
-				
-				return;
-			}
-			elseif($this->keys[$i] != $keys[$i])
-			{
-				$rest_this = array_slice($this->keys, $i);
-				$rest_new  = array_slice($keys, $i);
-				
-				$this->keys = array_slice($this->keys, 0, $i);
-				
-				$first_this = array_shift($rest_this);
-				$first_new  = array_shift($rest_new);
-				
-				$tmp = $this->value;
-				var_dump($tmp);
-				
-				$this->value = array();
-				
-				$this->value[$first_this] = new ExpressionKey($rest_this, $tmp);
-				$this->value[$first_new]  = new ExpressionKey($rest_new, array($value));
-				
-				return;
-			}
-		}
-		
-		if(count($this->keys) > $i)
-		{
-			$rest_this = array_slice($this->keys, $i);
-			
-			$first_this = array_shift($rest_this);
-			
-			$tmp = $this->value;
-			
-			$this->value = array();
-			
-			$this->value[$first_this] = new ExpressionKey($rest_this, $tmp);
-			$this->value[]            = $value;
-		}
-		else
-		{
-			$this->value[] = $value;
-		}
-	}
-	
-	public function toCode($indent = 0)
-	{
-		$ind = str_repeat("\t", $indent);
-		$arr = array_map(function($key, $elem) use($ind, $indent)
-		{
-			if(is_object($elem) && $elem instanceof ExpressionKey)
-			{
-				$elem = $elem->toCode($indent + 1);
-			}
-			
-			if( ! is_numeric($key))
-			{
-				return $ind.'if('.$key.")\n$ind{\n".$elem."\n$ind}";
-			}
-			else
-			{
-				return $elem;
-			}
-		}, array_keys($this->value), array_values($this->value));
-		
-		if(empty($this->keys))
-		{
-			return implode("\n\n", $arr);
-		}
-		else
-		{
-			return $ind.'if('.implode(' && ', $this->keys).")\n$ind{\n".implode("\n\n", $arr)."\n$ind}";
-		}
-	}
-}
-
-
 class Multimap
 {
 	protected $keys = array();
@@ -338,15 +199,22 @@ class Multimap
 		$rest_new   = array_slice($keys, $i);
 		$this->keys = array_slice($this->keys, 0, $i);
 		
-		$tmp = $this->values;
+		if( ! empty($rest_this))
+		{
+			$tmp = $this->values;
+			
+			$this->values = array();
+			
+			foreach($tmp as $k => $v)
+			{
+				empty($tmp) OR $this->setRelativeKey(is_numeric($k) ? $rest_this : array_merge(array($k), $rest_this), $v);
+			}
+		}
 		
-		$this->values = array();
-		
-		empty($tmp) OR $this->setRelativeKey($rest_this, $tmp, true);
 		$this->setRelativeKey($rest_new, $value);
 	}
 	
-	public function setRelativeKey($keys, $value, $copy = false)
+	public function setRelativeKey($keys, $value)
 	{
 		$key = array_shift($keys);
 		
@@ -354,14 +222,11 @@ class Multimap
 		{
 			$this->values[] = $value;
 		}
-		elseif( ! empty($this->values[$key]))
-		{
-			$this->values[$key]->set($keys, $value);
-		}
 		else
 		{
-			var_dump($keys);
-			$this->values[$key] = new Multimap($keys, $copy ? $value : array($value));
+			empty($this->values[$key]) && $this->values[$key] = new Multimap($keys);
+			
+			$this->values[$key]->set($keys, $value);
 		}
 	}
 	
@@ -371,8 +236,10 @@ class Multimap
 		
 		$str = array();
 		
+		// We have conditions common to all the values
 		if( ! empty($this->keys))
 		{
+			// Increase the indentation one step to compensate
 			$oind = $ind;
 			$ind .= "\t";
 			$indent++;
@@ -380,6 +247,7 @@ class Multimap
 			$str[] = $oind.'if('.implode(' && ', $this->keys).")\n$oind{";
 		}
 		
+		// Create if-clauses for all the conditions first
 		foreach($this->values as $key => $val)
 		{
 			if(is_numeric($key))
@@ -394,10 +262,13 @@ class Multimap
 			$str[] = "$ind}";
 		}
 		
+		// Extract values, ie. values with numeric keys
 		$data = array_intersect_key($this->values, array_flip(array_filter(array_keys($this->values), 'is_numeric')));
 		
+		// If we have data, add a return which lists the values and also the $matches var
 		empty($data) OR $str[] = $ind.'return array(array('.implode(', ', $data).'), $matches);';
 		
+		// Wrapping if
 		if( ! empty($this->keys))
 		{
 			$str[] = "$oind}";
@@ -407,59 +278,3 @@ class Multimap
 	}
 }
 
-class ExpressionGraph
-{
-	protected $keys = array();
-	
-	protected $values = array();
-	
-	public function set(array $keys, $value)
-	{
-		$key = array_shift($keys);
-		
-		foreach((Array) $key as $k)
-		{
-			if(empty($this->keys[$k]))
-			{
-				$this->keys[$k] = new ExpressionGraph();
-			}
-			
-			if(empty($keys))
-			{
-				$this->keys[$k]->add($value);
-			}
-			else
-			{
-				$this->keys[$k]->set($keys, $value);
-			}
-		}
-	}
-	
-	public function countConditions()
-	{
-		return count(array_keys($this->keys));
-	}
-	
-	public function compile()
-	{
-		$arr = array();
-		
-		foreach($this->keys as $cond => $value)
-		{
-			if($value->countConditions() > 1)
-			{
-				
-			}
-		}
-		
-		foreach($this->values as $v)
-		{
-			
-		}
-	}
-	
-	public function add($value)
-	{
-		$this->values[] = $value;
-	}
-}

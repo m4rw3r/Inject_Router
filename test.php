@@ -6,7 +6,6 @@ $prjdir = realpath(__dir__.'/..');
 
 $paths = array(
 	'./src/php',
-	$prjdir.'/Inject_Stack/src/php',
 	$prjdir.'/Inject_ClassTools/src/php',
 	get_include_path()
 );
@@ -20,14 +19,42 @@ require 'Inject/ClassTools/Autoloader/Generic.php';
 $loader = new \Inject\ClassTools\Autoloader\Generic();
 $loader->register();
 
-use Inject\Router\Parser\RegExp;
+use Inject\Router\CompilingDynamic;
 
-$r = new RegExp('+/user(?:(?<id>(\d)\+))?.+ui');
+$rtr = new CompilingDynamic();
 
-var_dump($r);
+$rtr->connect('GET', '+/$+', function()
+	{
+		return '+/$+';
+	}
+);
 
-var_dump($r->getPattern());
+$rtr->connect('GET', '+/user$+', function()
+	{
+		return '+/user$';
+	}
+);
 
-var_dump(preg_match($r->getPattern(), '/user'));
+$rtr->connect('GET', '+/user(?:/(?<id>\d+))?$+', function($env)
+	{
+		var_dump($env);
+		
+		return '+/user'.(empty($env['route.captures']) ? '$' : '/'.$env['route.captures']['id']);
+	}
+);
 
-var_dump($r->getNamedCaptures());
+$rtr->connect('GET', '+/user-profile/(\d+)$+', function()
+	{
+		return 'Profile for user, but we did not capture the id into a named capture.';
+	}
+);
+
+// Dump the generated code
+var_dump($rtr->exportData());
+
+// Build the route graph (ie. eval() generated closure)
+$rtr->build();
+
+// Test routing!
+var_dump($rtr(array('REQUEST_METHOD' => 'GET', 'PATH_INFO' => '/user/45')));
+

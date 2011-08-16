@@ -37,11 +37,6 @@ class CharClass implements PartInterface
 		return $this->parts;
 	}
 	
-	public function isLiteral()
-	{
-		return false;
-	}
-	
 	public function parse(StringScanner $str, Closure $unescaper)
 	{
 		while( ! $str->isEmpty())

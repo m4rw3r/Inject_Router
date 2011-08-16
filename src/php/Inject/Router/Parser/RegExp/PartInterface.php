@@ -30,25 +30,10 @@ interface PartInterface
 	public function getParts();
 	
 	/**
-	 * Returns true if this object can be represented by a literal string,
-	 * ie. it is unambiguous.
-	 * 
-	 * @return boolean
-	 */
-	public function isLiteral();
-	
-	/**
 	 * Returns the partial Regular Expression pattern this object represents.
 	 * 
 	 * @param  Closure  A function which will escape strings for use in the expression
 	 * @return string
 	 */
 	public function toPattern(Closure $escaper);
-	
-	/**
-	 * Shows a compressed debug representation of this object and its children.
-	 * 
-	 * @return string
-	 */
-	//public function __toString();
 }

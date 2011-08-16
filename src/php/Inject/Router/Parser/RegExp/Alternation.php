@@ -27,12 +27,8 @@ class Alternation extends Pattern
 	
 	public function getParts()
 	{
-		return array(array($first_parts, $parts));
-	}
-	
-	public function isLiteral()
-	{
-		return false;
+		// TODO: Fix
+		return array(array($this->first_parts, $this->parts));
 	}
 	
 	public function toPattern(Closure $escaper)

@@ -49,11 +49,6 @@ class Capture extends Pattern
 		return $this->name;
 	}
 	
-	public function isLiteral()
-	{
-		return false;
-	}
-	
 	public function toPattern(Closure $escaper)
 	{
 		if( ! $this->name)

@@ -68,14 +68,8 @@ class Pattern implements PartInterface
 			// Closing code for Capture or Options
 			else if($str->scan('\\)'))
 			{
-				if($this instanceof Capture OR $this instanceof Options)
-				{
-					return;
-				}
-				else
-				{
-					throw new \Exception('Unexpected ending parenthesis at "'.$str->getRest().'".');
-				}
+				// TODO: How to count parenthesis?
+				return;
 			}
 			// [:class:], [charclass]
 			else if($str->scan('\\['))
@@ -167,12 +161,6 @@ class Pattern implements PartInterface
 	public function getParts()
 	{
 		return $this->parts;
-	}
-	
-	public function isLiteral()
-	{
-		// Pattern is literal as it is just a predetermined sequence
-		return true;
 	}
 	
 	public function toPattern(Closure $escaper)

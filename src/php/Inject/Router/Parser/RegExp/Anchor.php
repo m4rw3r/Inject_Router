@@ -8,37 +8,48 @@
 namespace Inject\Router\Parser\RegExp;
 
 use \Closure;
+use \Inject\Router\Util\StringScanner;
 
 /**
  * An anchor pointing to a position in a string.
  * 
  * TODO: Add support for \1, \2 etc. anchors
  */
-class Anchor
+class Anchor implements PartInterface
 {
 	/**
 	 * A starting anchor.
 	 */
-	const START = 'start';
+	const START = 'START';
 	
 	/**
 	 * An ending anchor.
 	 */
-	const END = 'end';
+	const END = 'END';
 	
-	protected $part;
+	protected $type;
 	
 	protected $text;
 	
-	public function __construct($part, $text)
+	public function __construct($type, $text)
 	{
-		$this->part = $part;
+		$this->type = $type;
 		$this->text = $text;
 	}
 	
-	public function getPart()
+	public function getType()
 	{
-		return $this->part;
+		return $this->type;
+	}
+	
+	public function parse(StringScanner $str, Closure $unescaper)
+	{
+		throw new \Exception(__METHOD__.' should not be called.');
+	}
+	
+	public function getParts()
+	{
+		return array();
 	}
 	
 	public function toPattern(Closure $escaper)

@@ -176,7 +176,7 @@ class RegExp
 	{
 		return array_filter($this->capture_names, function($elem)
 		{
-			return ! is_int($elem);
+			return is_string($elem);
 		});
 	}
 	
@@ -185,13 +185,17 @@ class RegExp
 	/**
 	 * Returns the Regular Expression representation of this pattern.
 	 * 
+	 * @param  string  Delimiter, will default to the delimiter used in the
+	 *                 original pattern
 	 * @return string
 	 */
-	public function getPattern()
+	public function getPattern($delimiter = null)
 	{
-		return $this->delimiter.str_replace($this->delimiter, '\\'.$this->delimiter,
-			$this->pattern->toPattern($this->getEscaper())).$this->delimiter.
-			implode('', $this->modifiers);
+		$delimiter OR $delimiter = $this->delimiter;
+		
+		return $delimiter.
+			$this->pattern->toPattern($this->getEscaper($delimiter)).
+			$delimiter.implode('', $this->modifiers);
 	}
 	
 	// ------------------------------------------------------------------------
@@ -201,9 +205,9 @@ class RegExp
 	 * 
 	 * @return Closure
 	 */
-	public function getEscaper()
+	public function getEscaper($delim = false)
 	{
-		$delim = $this->delimiter;
+		$delim OR $delim = $this->delimiter;
 		
 		return function($str) use($delim)
 		{

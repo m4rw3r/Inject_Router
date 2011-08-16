@@ -36,11 +36,6 @@ class POSIXClass implements PartInterface
 		return array();
 	}
 	
-	public function isLiteral()
-	{
-		return false;
-	}
-	
 	public function toPattern(Closure $escaper)
 	{
 		return '[:'.$this->name.':]';
